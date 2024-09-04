@@ -1,16 +1,17 @@
 # View logs
 
-![Version](https://img.shields.io/badge/VERSION-1.3.9-0366d6.svg?style=for-the-badge)
-![Joomla](https://img.shields.io/badge/joomla-3.2+-1A3867.svg?style=for-the-badge)
-![Php](https://img.shields.io/badge/php-5.6+-8892BF.svg?style=for-the-badge)
+[![Download](https://img.shields.io/github/release/WebTolk/View-logs.svg?style=for-the-badge&colorA=555&colorB=1e87f0&label=download)](https://www.septdir.com/solutions/download?element=pkg_swjprojects)
+
+![Joomla](https://img.shields.io/badge/joomla-4+-1A3867.svg?style=for-the-badge)
+![Joomla](https://img.shields.io/badge/joomla-5+-1A3867.svg?style=for-the-badge)
+![Php](https://img.shields.io/badge/php-7.4+-8892BF.svg?style=for-the-badge)
 
 _description in Russian [here](README.ru.md)_
 
-IMPORTANT! Release 1.3.9 is final, further support of this extension is not planned.
-
 ## Component view the saved logs of core and extensions Joomla
 
-### Powered by Joomla!4
+### Works with Joomla! 4 and Joomla! 5
+See version for Joomla 3 [here](https://github.com/AlekVolsk/View-logs).
 
 **Scope**:
 
