@@ -1,9 +1,9 @@
 <?php
 /**
  * @package       View logs
- * @version       2.0.0
+ * @version       2.0.1
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
- * @сopyright     Copyright (c) 2019 - 2024 Sergey Tolkachyov. All rights reserved.
+ * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
  * @since         1.0.0
  */
@@ -20,6 +20,9 @@ use Joomla\CMS\MVC\Model\ListModel;
 
 class AjaxModel extends ListModel
 {
+
+	private static string $EOLPlaceholder = '<<<ViewLogsEOL>>>';
+
 	public function List()
 	{
 		$log_path = str_replace('\\', '/', Factory::getContainer()->get('config')->get('log_path'));
@@ -34,27 +37,33 @@ class AjaxModel extends ListModel
 			$this->printJson($html, true, ['count' => 0]);
 		}
 
-		$columns = '';
-		$data    = $this->getCSV($log_path . '/' . $file, '	');
-		for ($i = 0; $i < 6; $i++)
-		{
-			if (count($data[$i]) < 4 || $data[$i][0][0] == '#')
-			{
-				if (!empty($data[$i][0]) && strpos($data[$i][0], '#Fields:') !== false)
-				{
-					$columns = $data[$i];
-				}
-				unset($data[$i]);
-			}
-		}
+		$data    = $this->parseLogFile($log_path . '/' . $file);
+		$columns = array_keys($data[0]);
 		if ($columns)
 		{
 			$columns = explode(' ', implode(' ', $columns));
-			unset($columns[0]);
-			$columns = array_values($columns);
 		}
 
+//		for ($i = 0; $i < 6; $i++)
+//		{
+//			if (count($data[$i]) < 4 || $data[$i][0][0] == '#')
+//			{
+//				if (!empty($data[$i][0]) && strpos($data[$i][0], '#Fields:') !== false)
+//				{
+//					$columns = $data[$i];
+//				}
+//				unset($data[$i]);
+//			}
+//		}
+//		if ($columns)
+//		{
+//			$columns = explode(' ', implode(' ', $columns));
+//			unset($columns[0]);
+//			$columns = array_values($columns);
+//		}
+
 		$data = array_reverse($data);
+
 		$html = [];
 		$cnt  = count($data);
 
@@ -64,37 +73,51 @@ class AjaxModel extends ListModel
 
 			foreach ($columns as $col)
 			{
-				switch ($col)
-				{
-					case 'datetime':
-						$html[] = '<th width="10%">' . Text::_('COM_VLOGS_COLUMN_DT') . '</th>';
-						break;
-					case 'date':
-						$html[] = '<th width="5%">' . Text::_('COM_VLOGS_COLUMN_DATE') . '</th>';
-						break;
-					case 'time':
-						$html[] = '<th width="5%">' . Text::_('COM_VLOGS_COLUMN_TIME') . '</th>';
-						break;
-					case 'priority':
-						$html[] = '<th width="5%">' . Text::_('COM_VLOGS_COLUMN_PRIORITY') . '</th>';
-						break;
-					case 'clientip':
-						$html[] = '<th width="5%">' . Text::_('COM_VLOGS_COLUMN_IP') . '</th>';
-						break;
-					case 'category':
-						$html[] = '<th width="5%">' . Text::_('COM_VLOGS_COLUMN_CATEGORY') . '</th>';
-						break;
-					case 'message':
-						$cw = (count($columns) - 1) * 5;
-						if (in_array('datetime', $columns)) $cw += 5;
-						$html[] = '<th width="' . (100 - $cw) . '%">' . Text::_('COM_VLOGS_COLUMN_MSG') . '</th>';
-						break;
-					default:
-						$html[] = '<th>' . $col . '</th>';
-				}
+
+					switch ($col)
+					{
+						case 'datetime':
+							$html[] = '<th width="10%">' . Text::_('COM_VLOGS_COLUMN_DT') . '</th>';
+							break;
+						case 'date':
+							$html[] = '<th width="5%">' . Text::_('COM_VLOGS_COLUMN_DATE') . '</th>';
+							break;
+						case 'time':
+							$html[] = '<th width="5%">' . Text::_('COM_VLOGS_COLUMN_TIME') . '</th>';
+							break;
+						case 'priority':
+							$html[] = '<th width="5%">' . Text::_('COM_VLOGS_COLUMN_PRIORITY') . '</th>';
+							break;
+						case 'clientip':
+							$html[] = '<th width="5%">' . Text::_('COM_VLOGS_COLUMN_IP') . '</th>';
+							break;
+						case 'category':
+							$html[] = '<th width="5%">' . Text::_('COM_VLOGS_COLUMN_CATEGORY') . '</th>';
+							break;
+						case 'message':
+							$cw = (count($columns) - 1) * 5;
+							if (in_array('datetime', $columns)) $cw += 5;
+							$html[] = '<th width="' . (100 - $cw) . '%">' . Text::_('COM_VLOGS_COLUMN_MSG') . '</th>';
+							break;
+						default:
+							$html[] = '<th>' . $col . '</th>';
+					}
+
+
 			}
 
 			$html[] = '</tr></thead><tbody>';
+
+
+			/**
+			 * $items = [
+			 *  'datetime' => '',
+			 *  'priority' => '',
+			 *  'clientip' => '',
+			 *  'category' => '',
+			 *  'message' => '',
+			 * ];
+			 */
 
 			foreach ($data as $i => $item)
 			{
@@ -117,64 +140,133 @@ class AjaxModel extends ListModel
 					unset($msg);
 				}
 
-				$html[] = '<tr class="row' . ($i % 2) . '">';
-				foreach ($item as $j => $dataitem)
+				$html[] = '<tr>';
+				// date time
+				try
 				{
-					switch (strtolower($columns[$j]))
-					{
-						case 'datetime':
-							try
-							{
-								$date     = new \DateTime($dataitem);
-								$dataitem = $date->format('U');
-								$date     = HTMLHelper::_('date', $dataitem, 'Y-m-d H:i:s');
-							}
-							catch (\Exception $e)
-							{
-								$date = '';
-							}
-							$html[] = '<td class="nowrap">' . $date . '</td>';
-							break;
-						case 'priority':
-							switch (strtolower($dataitem))
-							{
-								case 'emergency':
-									$html[] = '<td class="text-error">' . $dataitem . '</td>';
-									break;
-								case 'alert':
-									$html[] = '<td class="text-warning">' . $dataitem . '</td>';
-									break;
-								case 'critical':
-									$html[] = '<td class="text-error">' . $dataitem . '</td>';
-									break;
-								case 'error':
-									$html[] = '<td class="text-error">' . $dataitem . '</td>';
-									break;
-								case 'warning':
-									$html[] = '<td class="text-warning">' . $dataitem . '</td>';
-									break;
-								case 'notice':
-									$html[] = '<td class="text-info">' . $dataitem . '</td>';
-									break;
-								case 'info':
-									$html[] = '<td class="text-info">' . $dataitem . '</td>';
-									break;
-								case 'debug':
-									$html[] = '<td class="text-info">' . $dataitem . '</td>';
-									break;
-								default:
-									$html[] = '<td>' . $dataitem . '</td>';
-							}
-							break;
-						case 'message':
-							$json        = json_decode($dataitem, true);
-							$json_result = json_last_error() === JSON_ERROR_NONE;
-							$html[]      = '<td>' . ($json_result ? '<div><a href="javascript:void(0)" onclick="jQuery(this).parent().next(\'pre\').slideToggle(200);" style="cursor:pointer">' . Text::_('COM_VLOGS_COLUMN_MSG_JSON_TITLE') . '</a></div><pre style="display:none">' . print_r($json, true) . '</pre>' : htmlspecialchars($dataitem)) . '</td>';
-							break;
-						default:
-							$html[] = '<td>' . $dataitem . '</td>';
-					}
+					$date     = new \DateTime($item['datetime']);
+					$dataitem = $date->format('U');
+					$date     = HTMLHelper::_('date', $dataitem, 'Y-m-d H:i:s');
 				}
+				catch (\Exception $e)
+				{
+					$date = '';
+				}
+				$html[] = '<td class="nowrap">' . $date . '</td>';
+
+				// Priority
+				$css_priority = [
+					'emergency' => 'bg-error',
+					'alert'     => 'bg-warning',
+					'critical'  => 'bg-error',
+					'error'     => 'bg-error',
+					'warning'   => 'bg-warning',
+					'notice'    => 'bg-info',
+					'info'      => 'bg-info',
+					'debug'     => 'bg-info',
+				];
+				$priority = strtolower($item['priority']);
+				$has_priority_css = array_key_exists($priority, $css_priority);
+				$html[] = '<td>';
+				if ($has_priority_css)
+				{
+					$html[] = '<span class="badge ' . $css_priority[$priority] . '">';
+				}
+				$html[] = $item['priority'];
+				if ($has_priority_css)
+				{
+					$html[] = '</span>';
+				}
+				$html[] = '</td>';
+
+				$html[] = '<td><code>' . $item['clientip'] . '</code></td>';
+				// Category
+				$html[] = '<td>' . $item['category'] . '</td>';
+
+				// Message
+				if(str_contains($item['message'], self::$EOLPlaceholder))
+				{
+					$item['message'] = str_replace(self::$EOLPlaceholder,PHP_EOL, $item['message']);
+				}
+
+				$json        = json_decode($item['message'], true);
+				$json_result = json_last_error() === JSON_ERROR_NONE;
+				$html[]      = '<td>' . ($json_result ? '<details><summary>' . Text::_('COM_VLOGS_COLUMN_MSG_JSON_TITLE') . '</summary><div class="p-2"><pre>' . print_r($json, true) . '</pre></div></details>' : nl2br(htmlspecialchars($item['message']))) . '</td>';
+
+
+
+//				foreach ($item as $j => $dataitem)
+//				{
+//					switch (strtolower($columns[$j]))
+//					{
+//						case 'datetime':
+//							try
+//							{
+//								$date     = new \DateTime($dataitem);
+//								$dataitem = $date->format('U');
+//								$date     = HTMLHelper::_('date', $dataitem, 'Y-m-d H:i:s');
+//							}
+//							catch (\Exception $e)
+//							{
+//								$date = '';
+//							}
+//							$html[] = '<td class="nowrap">' . $date . '</td>';
+//							break;
+//						case 'priority':
+//
+//
+//							$css_priority = [
+//								'emergency' => 'text-error',
+//								'alert'     => 'text-warning',
+//								'critical'  => 'text-error',
+//								'error'     => 'text-error',
+//								'warning'   => 'text-warning',
+//								'notice'    => 'text-info',
+//								'info'      => 'text-info',
+//								'debug'     => 'text-info',
+//							];
+//
+//							$html[] = '<td '.(in_array(strtolower($dataitem), $css_priority) ? 'class="'.$css_priority[strtolower($dataitem)].'"' :'').'>' . $dataitem . '</td>';
+//
+//						switch (strtolower($dataitem))
+//						{
+//							case 'emergency':
+//								$html[] = '<td class="text-error">' . $dataitem . '</td>';
+//								break;
+//							case 'alert':
+//								$html[] = '<td class="text-warning">' . $dataitem . '</td>';
+//								break;
+//							case 'critical':
+//								$html[] = '<td class="text-error">' . $dataitem . '</td>';
+//								break;
+//							case 'error':
+//								$html[] = '<td class="text-error">' . $dataitem . '</td>';
+//								break;
+//							case 'warning':
+//								$html[] = '<td class="text-warning">' . $dataitem . '</td>';
+//								break;
+//							case 'notice':
+//								$html[] = '<td class="text-info">' . $dataitem . '</td>';
+//								break;
+//							case 'info':
+//								$html[] = '<td class="text-info">' . $dataitem . '</td>';
+//								break;
+//							case 'debug':
+//								$html[] = '<td class="text-info">' . $dataitem . '</td>';
+//								break;
+//							default:
+//								$html[] = '<td>' . $dataitem . '</td>';
+//						}
+//						break;
+//						case 'message':
+//							$json        = json_decode($dataitem, true);
+//							$json_result = json_last_error() === JSON_ERROR_NONE;
+//							$html[]      = '<td>' . ($json_result ? '<details><summary>' . Text::_('COM_VLOGS_COLUMN_MSG_JSON_TITLE') . '</summary><div class="p-2"><pre>' . print_r($json, true) . '</pre></div></details>' : htmlspecialchars($dataitem)) . '</td>';
+//							break;
+//						default:
+//							$html[] = '<td>' . $dataitem . '</td>';
+//					}
+//				}
 				$html[] = '</tr>';
 			}
 
@@ -308,7 +400,113 @@ class AjaxModel extends ListModel
 		exit;
 	}
 
-	private function getCSV($file, $delimiter = ';')
+	/**
+	 * Parse Joomla logs
+	 *
+	 * @param string $file
+	 *
+	 * @return array
+	 *
+	 * @since 2.0.1
+	 */
+	private function parseLogFile(string $file):array
+	{
+		$file = file_get_contents($file);
+		$lines = explode("\n", $file);
+		$result = [];
+
+		// Line with table headers contains `#Fields`
+		$headerLineIndex = null;
+		$headers = [];
+
+		foreach ($lines as $index => $line) {
+			if (strpos($line, '#Fields:') === 0) {
+				$headerLineIndex = $index;
+
+				$headerLine = str_replace('#Fields:', '', $line);
+				$headers = explode("\t", trim($headerLine));
+				$headers = explode(' ', implode(' ', $headers));
+				break;
+			}
+		}
+
+		$headersCount = count($headers);
+
+		if ($headerLineIndex === null) {
+			return $result;
+		}
+		$currentEntry = null;
+
+		for ($i = $headerLineIndex + 1; $i < count($lines); $i++) {
+
+			$line = trim($lines[$i]);
+			if (empty($line)) {
+				continue;
+			}
+
+			// Check if line starts from date string (format: 2025-09-22T17:32:43+00:00)
+			if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}\t/', $line)) {
+
+				if ($currentEntry !== null) {
+					$result[] = $currentEntry;
+				}
+
+				$columns = explode("\t", $line, $headersCount);
+
+				if (count($columns) === ($headersCount - 1)) {
+					// split priority + clientip by space
+					$mixed_data = explode(' ', $columns[1]);
+
+					$dataitem = [
+						$columns[0], // datetime
+						$mixed_data[0], // priority
+						$mixed_data[1], // clientip
+						$columns[2], // category
+					];
+					if($columns[3]) {
+						$dataitem[] = $columns[3];
+					}
+
+					$currentEntry = array_combine($headers, $dataitem);
+
+					if (isset($currentEntry['message'])) {
+						$currentEntry['message'] = str_replace(
+							["\r\n", "\r", "\n", PHP_EOL],
+							self::$EOLPlaceholder,
+							$currentEntry['message']
+						);
+					}
+				} else {
+					$currentEntry = null;
+				}
+			} elseif ($currentEntry !== null && isset($currentEntry['message'])) {
+				// If the row does not start with a date, this is the data for the message column from the previous record.
+				$currentEntry['message'] .= self::$EOLPlaceholder . str_replace(
+						["\r\n", "\r", "\n", PHP_EOL],
+						self::$EOLPlaceholder,
+						$line
+				);
+			}
+		}
+
+		if ($currentEntry !== null) {
+			$result[] = $currentEntry;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * For CSV logs
+	 *
+	 * @param string $file
+	 * @param string $delimiter
+	 *
+	 * @return array
+	 *
+	 * @since 1.0.0
+	 */
+	private function getCSV(string $file, string $delimiter = ';'):array
 	{
 		$a    = [];
 		$slen = ComponentHelper::getParams('com_vlogs')->get('slen', 32768);
@@ -328,6 +526,8 @@ class AjaxModel extends ListModel
 
 		return $a;
 	}
+
+
 
 	public function dwFile()
 	{
@@ -359,7 +559,7 @@ class AjaxModel extends ListModel
 		}
 		else
 		{
-			$data    = $this->getCSV($log_path . '/' . $file, '	');
+			$data    = $this->parseLogFile($log_path . '/' . $file, '	');
 			$base_ci = -1;
 			foreach ($data as $i => $item)
 			{
@@ -422,7 +622,7 @@ class AjaxModel extends ListModel
 			}
 			foreach ($data as $item)
 			{
-				fputcsv($handle, $item, $delimiter);
+				fputcsv($handle, $item, $delimiter, '"','\\', PHP_EOL);
 			}
 			fclose($handle);
 		}

@@ -1,125 +1,119 @@
 /**
  * @package       View logs
- * @version       2.0.0
+ * @version       2.0.1
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
- * @сopyright     Copyright (c) 2019 - 2024 Sergey Tolkachyov. All rights reserved.
+ * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
  * @since         1.0.0
  */
 document.addEventListener('DOMContentLoaded', function () {
-    var
-        request = new XMLHttpRequest(),
-        formData = new FormData(),
-        response = false,
-        sel = document.querySelector('#view_select_files');
 
-    Joomla.Text.load({info: " . Text::_('MESSAGE') . ", error: " . Text::_('ERROR') . "});
 
-    getLog = function (vfile) {
-        document.querySelector('#view_items_list').innerHTML = '';
-        document.querySelector('#view_count_items').innerHTML = '0';
+    ((ViewLogs) => {
+        ViewLogs.init = () => {
+            const token = Joomla.getOptions('csrf.token');
+            const content = document.getElementById('content');
 
-        request.open('POST', location.protocol + '//' + location.host + location.pathname + '?option=com_vlogs&task=getAjax&action=List&filename=' + vfile);
-        request.send(new URLSearchParams(formData));
+            document.querySelectorAll('.log-item').forEach(logItem => {
 
-        request.onreadystatechange = function () {
-            if (this.readyState === 4 && this.status === 200) {
-                try {
-                    response = JSON.parse(this.response);
-                    document.querySelector('#view_items_list').innerHTML = response.message;
-                    document.querySelector('#view_count_items').innerHTML = response.count;
-                } catch (e) {
-                    console.log(response);
-                    Joomla.renderMessages({'error': [this.response]});
-                    response = false;
-                }
-            }
-        };
-    }
+                const buttons = logItem.querySelectorAll('button[data-task][data-log-filename]');
 
-    delLog = function (vfile) {
-        request.open('POST', location.protocol + '//' + location.host + location.pathname + '?option=com_vlogs&task=getAjax&action=DelFile&filename=' + vfile);
-        request.send(new URLSearchParams(formData));
+                buttons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        // Получаем данные из data-атрибутов
+                        const task = this.dataset.task;
+                        const filename = this.dataset.logFilename;
+                        const downloadType = this.dataset.downloadType;
 
-        request.onreadystatechange = function () {
-            if (this.readyState === 4 && this.status === 200) {
-                try {
-                    response = JSON.parse(this.response);
-                    if (response.result) {
-                        sel.removeChild(sel.options[sel.selectedIndex]);
-                        getLog(sel.value);
-                        Joomla.renderMessages({'info': [response.message]});
-                    } else {
-                        Joomla.renderMessages({'error': [response.message]});
-                    }
-                } catch (e) {
-                    Joomla.renderMessages({'error': [this.response]});
-                    response = false;
-                }
-            }
-        };
-    }
+                        // Формируем базовый URL
+                        let url = `index.php?option=com_vlogs&view=item&filename=${filename}&${token}=1&ajax=1`;
 
-    archLog = function (vfile) {
-        request.open('POST', location.protocol + '//' + location.host + location.pathname + '?option=com_vlogs&task=getAjax&action=ArchiveFile&filename=' + vfile);
-        request.send(new URLSearchParams(formData));
-
-        request.onreadystatechange = function () {
-            if (this.readyState === 4 && this.status === 200) {
-                try {
-                    response = JSON.parse(this.response);
-                    if (response.result) {
-                        if (response.del) {
-                            sel.removeChild(sel.options[sel.selectedIndex]);
-                            getLog(sel.value);
+                        // Добавляем параметр download_type если есть
+                        if (downloadType) {
+                            url += `&download_type=${downloadType}`;
                         }
-                        Joomla.renderMessages({'info': [response.message]});
-                    } else {
-                        Joomla.renderMessages({'error': [response.message]});
-                    }
-                } catch (e) {
-                    Joomla.renderMessages({'error': [this.response]});
-                    response = false;
-                }
-            }
-        };
+
+                        // Создаем FormData
+                        const formData = new FormData();
+                        formData.append('task', task);
+                        formData.append(token, '1');
+
+                        // Отправляем запрос
+                        Joomla.request({
+                            url: url,
+                            method: 'POST',
+                            data: formData,
+                            onSuccess: (response, xhr) => {
+                                try {
+                                    const data = JSON.parse(response);
+
+                                    // Показываем сообщения об успехе/ошибке
+                                    if (data.message) {
+
+                                        if(data.success === true) {
+                                            Joomla.renderMessages({
+                                                success: [data.message]
+                                            });
+                                        } else {
+                                            Joomla.renderMessages({
+                                                warning: [data.message]
+                                            });
+                                        }
+
+                                    }
+
+                                    // Если это действие удаления и оно успешно - удаляем элемент из DOM
+                                    if (task === 'item.delete' && data.success) {
+                                        logItem.remove();
+                                        // wait 2 sec
+                                        setTimeout(function () {
+                                            // Делаем запрос для обновления списка
+                                            Joomla.request({
+                                                url: 'index.php?option=com_vlogs&view=items&tmpl=component',
+                                                method: 'GET',
+                                                onSuccess: function(response) {
+                                                    content.innerHTML = response;
+                                                    ViewLogs.init();
+                                                },
+                                                onError: function(xhr) {
+                                                    console.error('Error updating logs list', xhr);
+                                                }
+                                            }, 2000);
+                                        })
+
+                                    }
+
+                                    // Если это действие загрузки - обрабатываем файл
+                                    if (task === 'item.download' && data.success && data.file) {
+                                        // Создаем временную ссылку для скачивания
+                                        const link = document.createElement('a');
+                                        link.href = data.file.url;
+                                        link.download = data.file.name;
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
+                                    }
+                                } catch (e) {
+                                    console.error('Error parsing response:', e);
+                                    Joomla.renderMessages([['Error processing response', 'danger']]);
+                                }
+                            },
+                            onError: (xhr) => {
+                                Joomla.renderMessages([['Request failed', 'danger']]);
+                            }
+                        });
+                    });
+                });
+            });
+        }
+
+
+        if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ViewLogs.init);
+    } else {
+        ViewLogs.init();
     }
 
-    sel.addEventListener('change', function (e) {
-        getLog(e.target.value);
-    });
+    })(window.ViewLogs = window.ViewLogs || {});
 
-    document.querySelector('#view_refresh_file').addEventListener('click', function (e) {
-        getLog(sel.value);
-    });
-
-    var dbtn = document.querySelector('#view_download_file');
-    if (dbtn) {
-        dbtn.addEventListener('click', function (e) {
-            document.location.href = 'index.php?option=com_vlogs&task=getAjax&action=dwFile&bom=0&filename=' + sel.value;
-        });
-    }
-
-    var dbbtn = document.querySelector('#view_download_bom_file');
-    if (dbbtn) {
-        dbbtn.addEventListener('click', function (e) {
-            document.location.href = 'index.php?option=com_vlogs&task=getAjax&action=dwFile&bom=1&filename=' + sel.value;
-        });
-    }
-
-    rbtn = document.querySelector('#view_delete_file');
-    if (rbtn) {
-        rbtn.addEventListener('click', function (e) {
-            delLog(sel.value);
-        });
-    }
-
-    abtn = document.querySelector('#view_archive_file');
-    if (abtn) {
-        abtn.addEventListener('click', function (e) {
-            archLog(sel.value);
-        });
-    }
-
-    getLog(sel.value);
 });
