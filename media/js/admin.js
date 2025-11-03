@@ -1,6 +1,6 @@
 /**
  * @package       View logs
- * @version       2.0.1
+ * @version       2.1.0
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
  * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const buttons = logItem.querySelectorAll('button[data-task][data-log-filename]');
 
                 buttons.forEach(button => {
-                    button.addEventListener('click', function() {
+                    button.addEventListener('click', function () {
                         // Получаем данные из data-атрибутов
                         const task = this.dataset.task;
                         const filename = this.dataset.logFilename;
@@ -46,15 +46,16 @@ document.addEventListener('DOMContentLoaded', function () {
                             onSuccess: (response, xhr) => {
                                 try {
                                     const data = JSON.parse(response);
-
                                     // Показываем сообщения об успехе/ошибке
                                     if (data.message) {
 
-                                        if(data.success === true) {
+                                        if (data.success === true) {
+                                            ViewLogs.logItemResult(logItem, true);
                                             Joomla.renderMessages({
                                                 success: [data.message]
                                             });
                                         } else {
+                                            ViewLogs.logItemResult(logItem, false);
                                             Joomla.renderMessages({
                                                 warning: [data.message]
                                             });
@@ -71,35 +72,42 @@ document.addEventListener('DOMContentLoaded', function () {
                                             Joomla.request({
                                                 url: 'index.php?option=com_vlogs&view=items&tmpl=component',
                                                 method: 'GET',
-                                                onSuccess: function(response) {
+                                                onSuccess: function (response) {
                                                     content.innerHTML = response;
                                                     ViewLogs.init();
                                                 },
-                                                onError: function(xhr) {
+                                                onError: function (xhr) {
                                                     console.error('Error updating logs list', xhr);
                                                 }
                                             }, 2000);
                                         })
-
                                     }
 
-                                    // Если это действие загрузки - обрабатываем файл
-                                    if (task === 'item.download' && data.success && data.file) {
-                                        // Создаем временную ссылку для скачивания
+                                    // Если это загрузка - эмулируем клик по ссылке на файл
+                                    if (task === 'item.download' && data.success && data.data.download_url) {
+
+                                        ViewLogs.logItemResult(logItem, true);
+
                                         const link = document.createElement('a');
-                                        link.href = data.file.url;
-                                        link.download = data.file.name;
+                                        link.href = data.data.download_url;
+                                        link.download = data.data.filename;
                                         document.body.appendChild(link);
                                         link.click();
                                         document.body.removeChild(link);
                                     }
                                 } catch (e) {
+                                    ViewLogs.logItemResult(logItem, false);
                                     console.error('Error parsing response:', e);
-                                    Joomla.renderMessages([['Error processing response', 'danger']]);
+                                    Joomla.renderMessages({
+                                        error: ['Error parsing JSON response']
+                                    });
                                 }
                             },
                             onError: (xhr) => {
-                                Joomla.renderMessages([['Request failed', 'danger']]);
+                                ViewLogs.logItemResult(logItem, false);
+                                Joomla.renderMessages({
+                                    error: ['Request failed. Look at browser console for details.']
+                                });
                             }
                         });
                     });
@@ -107,13 +115,17 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-
+        ViewLogs.logItemResult = (logItem, success) => {
+            logItem.classList.add(success ? 'border-success' : 'border-danger');
+            setTimeout(() => {
+                logItem.classList.remove(success ? 'border-success' : 'border-danger');
+            }, 1000);
+        }
         if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', ViewLogs.init);
-    } else {
-        ViewLogs.init();
-    }
+            document.addEventListener('DOMContentLoaded', ViewLogs.init);
+        } else {
+            ViewLogs.init();
+        }
 
     })(window.ViewLogs = window.ViewLogs || {});
-
 });

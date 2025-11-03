@@ -8,7 +8,7 @@
     <license>GNU General Public License version 3 or later; see http://www.gnu.org/licenses/gpl-3.0.txt</license>
     <version>2.1.0</version>
     <description>COM_VLOGS_DESC</description>
-    <creationDate>31.10.2025</creationDate>
+    <creationDate>03.11.2025</creationDate>
     <namespace path="src">Joomla\Component\Vlogs</namespace>
     <scriptfile>script.php</scriptfile>
     <administration>
@@ -33,7 +33,6 @@
     </media>
     <updateservers>
         <server type="extension" priority="1" name="View logs updates">https://web-tolk.ru/component/swjprojects/jupdate?element=com_vlogs</server>
-        <server type="extension" priority="2" name="View Logs">https://joomla-update.org/extensions/com_vlogs/vlogs_update.xml</server>
     </updateservers>
     <changelogurl>https://web-tolk.ru/jchangelog?element=com_vlogs</changelogurl>
 </extension>

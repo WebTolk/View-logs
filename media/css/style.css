@@ -1,13 +1,17 @@
 .log-item {
     --card-border-width: 1px !important;
     --card-border-color: transparent;
+    transition: border 1s ease-out;
 }
+
 .log-item-icon {
     display: none;
 }
+
 .log-item:hover {
     --card-border-color: var(--border-color);
 }
+
 .log-item:hover .log-item-icon {
     display: flex;
     justify-content: center;

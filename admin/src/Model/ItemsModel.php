@@ -1,7 +1,7 @@
 <?php
 /**
  * @package       View logs
- * @version       2.0.1
+ * @version       2.1.0
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
  * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
@@ -14,6 +14,7 @@ use Joomla\CMS\Factory;
 use Joomla\CMS\MVC\Factory\MVCFactoryInterface;
 use Joomla\CMS\MVC\Model\ListModel;
 use Joomla\Filesystem\Folder;
+use RuntimeException;
 
 \defined('_JEXEC') or die;
 
@@ -44,18 +45,27 @@ class ItemsModel extends ListModel
 		return $items;
 	}
 
-	public function getFileMetadata(string $filename = ''):array
+    /**
+     * Get filesize, date created etc.
+     *
+     * @param   string  $filename
+     *
+     * @return array
+     *
+     * @since 2.1.0
+     */
+    public function getFileMetadata(string $filename = ''):array
 	{
 		if (empty($filename)) {
 			throw new \InvalidArgumentException('Filename cannot be empty');
 		}
 
 		if (!file_exists($filename)) {
-			throw new \RuntimeException("File '$filename' does not exist");
+            throw new RuntimeException("File '$filename' does not exist");
 		}
 
 		if (!is_readable($filename)) {
-			throw new \RuntimeException("File '$filename' is not readable");
+			throw new RuntimeException("File '$filename' is not readable");
 		}
 
 		$metadata = [];
@@ -94,7 +104,17 @@ class ItemsModel extends ListModel
 	}
 
 
-	private function formatFileSize(int $bytes, int $precision = 2): string
+    /**
+     * Format file size to human friendly
+     *
+     * @param   int  $bytes
+     * @param   int  $precision
+     *
+     * @return string
+     *
+     * @since 2.1.0
+     */
+    private function formatFileSize(int $bytes, int $precision = 2): string
 	{
 		if ($bytes == 0) {
 			return '0 B';

@@ -1,7 +1,7 @@
 <?php
 /**
  * @package       View logs
- * @version       2.0.1
+ * @version       2.1.0
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
  * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
@@ -19,8 +19,10 @@ use Joomla\CMS\HTML\HTMLRegistryAwareTrait;
 use Joomla\CMS\Language\Text;
 use Psr\Container\ContainerInterface;
 
+use function defined;
+
 // phpcs:disable PSR1.Files.SideEffects
-\defined('_JEXEC') or die;
+defined('_JEXEC') or die;
 // phpcs:enable PSR1.Files.SideEffects
 
 /**
@@ -51,15 +53,14 @@ class VlogsComponent extends MVCComponent implements
      */
     public function boot(ContainerInterface $container)
     {
-
     }
-
 
     /**
      * Returns valid contexts
      *
      * @return  array
      *
+     * @throws \Exception
      * @since   4.0.0
      */
     public function getContexts(): array
@@ -72,6 +73,4 @@ class VlogsComponent extends MVCComponent implements
 
         return $contexts;
     }
-
-
 }
