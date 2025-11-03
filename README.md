@@ -1,6 +1,6 @@
 # View logs
 
-[![Download](https://img.shields.io/github/release/WebTolk/View-logs.svg?style=for-the-badge&colorA=555&colorB=1e87f0&label=download)](https://www.septdir.com/solutions/download?element=pkg_swjprojects)
+[![Download](https://img.shields.io/github/release/WebTolk/View-logs.svg?style=for-the-badge&colorA=555&colorB=1e87f0&label=download)](https://web-tolk.ru/en/dev/components/view-logs)
 
 ![Joomla](https://img.shields.io/badge/joomla-4+-1A3867.svg?style=for-the-badge)
 ![Joomla](https://img.shields.io/badge/joomla-5+-1A3867.svg?style=for-the-badge)
