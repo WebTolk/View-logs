@@ -1,6 +1,6 @@
 /**
  * @package       View logs
- * @version       2.2.0
+ * @version       2.2.0.1
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
  * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
@@ -118,7 +118,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // --- Новый метод для инициализации поиска ---
         ViewLogs.initSearch = () => {
             const searchInput = document.getElementById('logfilesearch');
             if (!searchInput) {
@@ -131,41 +130,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 const searchTerm = searchInput.value.toLowerCase();
 
                 logItems.forEach(item => {
-                    const linkElement = item.querySelector('a[data-joomla-dialog]');
+                    const linkElement = item.querySelector('[data-log-filename]');
                     if (linkElement) {
-                        // Извлекаем имя файла из JSON-строки в data-joomla-dialog
-                        try {
-                            const dialogData = JSON.parse(linkElement.getAttribute('data-joomla-dialog'));
-                            // Предполагаем, что заголовок содержит имя файла
-                            const headerText = dialogData.textHeader ? dialogData.textHeader.toLowerCase() : '';
-                            // Ищем совпадение в заголовке (обычно содержит имя файла)
-                            if (headerText.includes(searchTerm)) {
-                                item.classList.remove('hidden');
-                            } else {
-                                item.classList.add('hidden');
-                            }
-                        } catch (e) {
-                            // Если не удалось распарсить JSON, пробуем найти в href
-                            const href = linkElement.getAttribute('href') || '';
-                            if (href.toLowerCase().includes(searchTerm)) {
-                                item.classList.remove('hidden');
-                            } else {
-                                item.classList.add('hidden');
-                            }
+                        const filename = linkElement.getAttribute('data-log-filename').toLowerCase();
+                        if (filename.includes(searchTerm)) {
+                            item.classList.remove('d-none');
+                        } else {
+                            item.classList.add('d-none');
                         }
                     } else {
-                         // Если ссылка с data-joomla-dialog не найдена, скрываем элемент
-                         item.classList.add('hidden');
+                         item.classList.add('d-none');
                     }
                 });
             };
 
             searchInput.addEventListener('input', filterLogItems);
 
-            // Вызываем при инициализации для сброса
             filterLogItems();
         };
-        // --- Конец нового метода ---
+
 
         ViewLogs.logItemResult = (logItem, success) => {
             logItem.classList.add(success ? 'border-success' : 'border-danger');
