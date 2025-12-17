@@ -44,6 +44,7 @@ class ItemModel extends BaseModel
      *
      * @return array
      *
+     * @throws DateInvalidTimeZoneException
      * @since 2.1.0
      */
     public function getItem(string $filename = ''): array
@@ -53,16 +54,41 @@ class ItemModel extends BaseModel
             return [];
         }
 
+        $jlog =  $this->getState('log.jlog');
         $log_path = $this->getState('log.path');
 
         if (!file_exists($log_path . DIRECTORY_SEPARATOR . $filename)) {
             throw new RuntimeException("File '$filename' does not exist");
         }
 
-        $item = $this->parseLogFile($filename);
-        foreach ($item as &$row) {
-            if (array_key_exists('message', $row) && str_contains($row['message'], self::$EOLPlaceholder)) {
-                $row['message'] = str_replace(self::$EOLPlaceholder, PHP_EOL, $row['message']);
+        if ($jlog === 0) {
+            $item = [];
+            $log  = $this->getPhpLog();
+            foreach ($log as $line) {
+                if (empty($line)) {
+                    continue;
+                }
+                $tmp  = explode('] ', $line);
+                $date = substr($tmp[0], 1, strlen($tmp[0]) - 1);
+                $date = explode(' ', $date);
+                $datetime = new DateTime($date[0] . 'T' . $date[1], new DateTimeZone($date[2]));
+                $d = date_format($datetime, 'Y-m-d');
+                $t = date_format($datetime, 'H:i:s');
+                [$type, $msg] = explode(':  ', $tmp[1]);
+                $item[] = [
+                    'date' => $d,
+                    'time' => $t,
+                    'php_priority' => $type,
+                    'message' => trim($msg)
+                ];
+            }
+//            $item = array_reverse($item);
+        } else {
+            $item = $this->parseLogFile($filename);
+            foreach ($item as &$row) {
+                if (array_key_exists('message', $row) && str_contains($row['message'], self::$EOLPlaceholder)) {
+                    $row['message'] = str_replace(self::$EOLPlaceholder, PHP_EOL, $row['message']);
+                }
             }
         }
 
@@ -98,7 +124,8 @@ class ItemModel extends BaseModel
         }
         $currentEntry      = null;
         $log_string_length = $this->getState('log.string.length');
-        for ($i = $headerLineIndex + 1; $i < count($lines); $i++) {
+        $countLines        = count($lines);
+        for ($i = $headerLineIndex + 1; $i < $countLines; $i++) {
             if ($log_string_length == $i && !$isDownload) {
                 break;
             }
@@ -199,10 +226,19 @@ class ItemModel extends BaseModel
         ];
     }
 
+    public function getPhpLogHeaders()
+    {
+        return [
+            0,
+            [ 'date', 'time', 'priority', 'message' ],
+        ];
+    }
+
     /**
      * Prepare CVS with {saveCVS()} and download it
      *
      * @param   string  $filename
+     * @param   int  $jlog
      *
      *
      * @return string|void Download link if ajax or force download if not
@@ -210,12 +246,12 @@ class ItemModel extends BaseModel
      * @throws DateInvalidTimeZoneException
      * @since 1.0.0
      */
-    public function downloadFile(string $filename): string
+    public function downloadFile(string $filename, int $jlog): string
     {
         $download_type = $this->getState('download_type', 'csv');
         $tmp_path      = $this->getState('tmp.path');
 
-        if ($filename === 'PHP error log') {
+        if ($filename === 'PHP error log' || $jlog === 0) {
             $data = [];
             $log  = $this->getPhpLog();
             foreach ($log as $item) {
@@ -224,16 +260,13 @@ class ItemModel extends BaseModel
                 }
                 $tmp  = explode('] ', $item);
                 $date = substr($tmp[0], 1, strlen($tmp[0]) - 1);
-                $date = explode(' ', $date);
-                $date = new DateTime($date[0] . 'T' . $date[1], new DateTimeZone($date[2]));
-                $date = date_format($date, 'Y-m-d H:i:s');
                 [$type, $msg] = explode(':  ', $tmp[1]);
                 $data[] = [$date, $type, trim($msg)];
             }
 
             $csv_file_name = pathinfo(ini_get('error_log'))['filename'];
         } else {
-            $data          = $this->parseLogFile($filename);
+            $data          = $this->parseLogFile($filename, $jlog);
             $csv_file_name = pathinfo($tmp_path . '/' . $filename)['filename'];
         }
 
@@ -249,7 +282,10 @@ class ItemModel extends BaseModel
         $this->saveCSV($file, $data, $bom ? ';' : ',', $bom);
 
         $download_url = new Uri(Uri::root());
-        $download_url->setPath('/' . str_replace(JPATH_SITE, '', $file));
+        // $download_url->setPath('/' . str_replace(JPATH_SITE, '', $file));
+        $path = '/' . str_replace(JPATH_SITE, '', realpath($file)); // normalize url path
+        $path = str_replace( '\\', '/', $path); // normalize url path
+        $download_url->setPath($path);
 
         if (!$this->getState('is.ajax')) {
             $this->file_force_download($file);
@@ -336,21 +372,25 @@ class ItemModel extends BaseModel
     public function deleteFile(string $filename): bool
     {
         $log_path = $this->getState('log.path');
-        $result   = File::delete($log_path . DIRECTORY_SEPARATOR . $filename);
+        $jlog = $this->getState('log.jlog');
+        if ($jlog === 1) {
+            return File::delete($log_path . DIRECTORY_SEPARATOR . $filename);
+        }
 
-        return $result;
+        return false;
     }
 
     /**
      * ZIP the log file. Return an array with `message` string and `result` bool.
      *
      * @param   string  $filename
+     * @param   int  $jlog
      *
      * @return array
      *
      * @since 1.0.0
      */
-    public function archiveFile(string $filename): array
+    public function archiveFile(string $filename, int $jlog): array
     {
         $archive_path = ComponentHelper::getParams('com_vlogs')->get('apath', 'tmp');
         $delAfterArch = (int)ComponentHelper::getParams('com_vlogs')->get('delafterarch', 0);
@@ -378,7 +418,7 @@ class ItemModel extends BaseModel
 
         $log_path = $this->getState('log.path');
 
-        if ($filename !== 'PHP error log') {
+        if ($filename !== 'PHP error log' && $jlog === 1) {
             if (!extension_loaded('zip')) {
                 $result['message'] = Text::_('COM_VLOGS_NO_PHPZIP');
                 $result['result']  = false;
@@ -405,10 +445,12 @@ class ItemModel extends BaseModel
             if ($delAfterArch) {
                 $resultDel = unlink($log_path . '/' . $filename);
             }
+            $filepath = str_replace(str_replace('\\', '/', JPATH_ROOT), '', $archPath);
             $result['message'] = Text::sprintf(
                 'COM_VLOGS_ARCHIVEFILE_ALERT_' . (int)($delAfterArch && $resultDel),
                 $filename,
-                str_replace(str_replace('\\', '/', JPATH_ROOT), '', $archPath)
+                rtrim(Uri::root(), '/') . $filepath,
+                $filepath,
             );
             $result['result']  = true;
 
@@ -425,7 +467,15 @@ class ItemModel extends BaseModel
     {
         $app      = Factory::getApplication();
         $config   = Factory::getContainer()->get('config');
-        $log_path = str_replace('\\', '/', $config->get('log_path'));
+
+        $jlog = $app->getInput()->getInt('jlog', 1);
+        $this->setState('log.jlog', $jlog);
+
+        if ($jlog === 0) { // php error log path
+            $log_path = str_replace('\\', '/', dirname(ini_get('error_log') ?? ''));
+        } else { // joomla log path
+            $log_path = str_replace('\\', '/', $config->get('log_path'));
+        }
         $this->setState('log.path', $log_path);
 
         $tmp_path = str_replace('\\', '/', $config->get('tmp_path', JPATH_SITE . DIRECTORY_SEPARATOR . 'tmp'));
