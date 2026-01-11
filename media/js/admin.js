@@ -26,10 +26,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         // Получаем данные из data-атрибутов
                         const task = this.dataset.task;
                         const filename = this.dataset.logFilename;
+                        const jlog = this.dataset.jlog;
                         const downloadType = this.dataset.downloadType;
 
                         // Формируем базовый URL
-                        let url = `index.php?option=com_vlogs&view=item&filename=${filename}&${token}=1&ajax=1`;
+                        let url = `index.php?option=com_vlogs&view=item&filename=${filename}&jlog=${jlog}&${token}=1&ajax=1`;
 
                         // Добавляем параметр download_type если есть
                         if (downloadType) {
