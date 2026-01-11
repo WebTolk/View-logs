@@ -1,9 +1,9 @@
 <?php
 /**
  * @package       View logs
- * @version       2.2.0.1
+ * @version       2.3.0
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
- * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
+ * @copyright     Copyright (c) 2019 - 2026 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
  * @since         1.0.0
  */
@@ -34,11 +34,12 @@ class ItemController extends BaseController
         }
         $model    = $this->getModel('Item');
         $filename = $this->input->getString('filename');
+        $jlog = $this->input->getInt('jlog');
         $ajax     = $this->input->getBool('ajax', false);
         if (!$ajax) {
             $this->setRedirect('index.php?option=com_vlogs&view=items');
         }
-        if ($filename == 'PHP error log') {
+        if ($filename == 'PHP error log' || $jlog === 0) {
             $this->setMessage(Text::_('COM_VLOGS_NO_DELETE_PHP_LOG') . ' ' . $filename, false);
             $this->redirect();
         }
@@ -48,7 +49,11 @@ class ItemController extends BaseController
         );
         $message_type = $result ? 'success' : 'error';
         if ($ajax) {
-            echo new JsonResponse(null, $message, !$result);
+            if ( $jlog === 0 && !$result ) {
+                echo new JsonResponse(null, Text::_('COM_VLOGS_NO_DELETE_PHP_LOG') . ' ' . $filename, !$result);
+            } else {
+                echo new JsonResponse(null, $message, !$result);
+            }
             exit();
         } else {
             $this->setMessage($message, $message_type);
@@ -70,7 +75,8 @@ class ItemController extends BaseController
         $model = $this->getModel('Item');
 
         $filename     = $this->input->getString('filename');
-        $download_url = $model->downloadFile($filename);
+        $jlog         = $this->input->getInt('jlog');
+        $download_url = $model->downloadFile($filename, $jlog);
         $ajax         = $this->input->getBool('ajax', false);
         if ($ajax) {
             echo new JsonResponse(
@@ -97,8 +103,9 @@ class ItemController extends BaseController
 
         $model    = $this->getModel('Item');
         $filename = $this->input->getString('filename');
+        $jlog     = $this->input->getInt('jlog');
 
-        $archiveFileData = $model->archiveFile($filename);
+        $archiveFileData = $model->archiveFile($filename, $jlog);
         $ajax            = $this->input->getBool('ajax', false);
 
         if ($ajax) {
@@ -106,7 +113,7 @@ class ItemController extends BaseController
             exit();
         } else {
             $this->setMessage($archiveFileData['message'], $archiveFileData['result'] ? 'success' : 'danger');
-            $this->setRedirect('index.php?option=com_vlogs&view=item&filename=' . $filename);
+            $this->setRedirect('index.php?option=com_vlogs&view=item&filename=' . $filename . '&jlog=' . $jlog);
             $this->redirect();
         }
     }

@@ -1,9 +1,9 @@
 <?php
 /**
  * @package       View logs
- * @version       2.2.0.1
+ * @version       2.3.0
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
- * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
+ * @copyright     Copyright (c) 2019 - 2026 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
  * @since         1.0.0
  */
@@ -18,28 +18,30 @@ defined('_JEXEC') or die;
 //dump($this->item);
 
 $lang_constants = [
-    'datetime' => 'COM_VLOGS_COLUMN_DT',
-    'date'     => 'COM_VLOGS_COLUMN_DATE',
-    'time'     => 'COM_VLOGS_COLUMN_TIME',
-    'priority' => 'COM_VLOGS_COLUMN_PRIORITY',
-    'clientip' => 'COM_VLOGS_COLUMN_IP',
-    'category' => 'COM_VLOGS_COLUMN_CATEGORY',
-    'message'  => 'COM_VLOGS_COLUMN_MSG',
+    'datetime'     => 'COM_VLOGS_COLUMN_DT',
+    'date'         => 'COM_VLOGS_COLUMN_DATE',
+    'time'         => 'COM_VLOGS_COLUMN_TIME',
+    'php_priority' => 'COM_VLOGS_COLUMN_PRIORITY',
+    'priority'     => 'COM_VLOGS_COLUMN_PRIORITY',
+    'clientip'     => 'COM_VLOGS_COLUMN_IP',
+    'category'     => 'COM_VLOGS_COLUMN_CATEGORY',
+    'message'      => 'COM_VLOGS_COLUMN_MSG',
 ];
 
 $priority_constants = [
-    'emergency' => 'danger',
-    'alert'     => 'danger',
-    'critical'  => 'danger',
-    'error'     => 'danger',
-    'warning'   => 'warning',
-    'notice'    => 'primary',
-    'info'      => 'info',
-    'debug'     => 'secondary',
+    'emergency'  => 'danger',
+    'alert'      => 'danger',
+    'critical'   => 'danger',
+    'error'      => 'danger',
+    'warning'    => 'warning',
+    'notice'     => 'primary',
+    'info'       => 'info',
+    'debug'      => 'secondary',
+    'deprecated' => 'secondary',
 ];
 
 ?>
-
+<?php if ($this->headers || $this->item) { ?>
 <table class="table table-striped table-hover">
     <thead class="sticky-top">
     <tr class="w-100">
@@ -61,7 +63,8 @@ $priority_constants = [
                 <th width="<?php
                 echo ($header !== 'message') ? '10%' : ''; ?>">
                     <?php
-                    if (in_array(strtolower($header), $lang_constants)) {
+                    // translation fix `in_array` -> `array_key_exists`
+                    if (array_key_exists(strtolower($header), $lang_constants)) {
                         echo Text::_($lang_constants[strtolower($header)]);
                     } else {
                         echo $header;
@@ -86,6 +89,14 @@ $priority_constants = [
                         case 'datetime':
                             echo HTMLHelper::date($td, 'DATE_FORMAT_LC6');
                             break;
+                        case 'php_priority':
+                            $php_priority = strtolower($td);
+                            $php_priority = trim(str_replace('php', '', $php_priority));
+                            echo '<span class="badge ' . (array_key_exists(
+                                    $php_priority,
+                                    $priority_constants
+                                    ) ? 'bg-' . $priority_constants[$php_priority] : '') . '">' . $td . '</span>';
+                            break;
                         case 'priority':
                             $priority = strtolower($td);
                             echo '<span class="badge ' . (array_key_exists(
@@ -103,7 +114,7 @@ $priority_constants = [
                                     $priority,
                                     $priority_constants
                                 ) ? 'bg-' . $priority_constants[$priority] : '') . '">' . $td[0] . '</span></td>';
-                            echo '<td><code>' . $td[1] . '</code>';
+                            echo '<td><code>' . ( $td[1] ?? '' ) . '</code>';
                             break;
                         default:
                             $json        = json_decode($td, true);
@@ -126,11 +137,14 @@ $priority_constants = [
     endforeach; ?>
     </tbody>
 </table>
+<?php } ?>
 <?php
-$filename = Factory::getApplication()->getInput()->getString('filename');
+$input    = Factory::getApplication()->getInput();
+$filename = $input->getString('filename');
+$jlog     = $input->getInt('jlog');
 ?>
 <form action="<?php
-echo Route::_('index.php?option=com_vlogs&view=item&filename=' . $filename); ?>" method="post" name="adminForm"
+echo Route::_('index.php?option=com_vlogs&view=item&filename=' . $filename . '&jlog=' . $jlog . '&format=row'); ?>" method="post" name="adminForm"
       id="adminForm" class="d-none">
     <input type="hidden" name="task" value="">
     <input type="hidden" name="download_type" value="csv"/>

@@ -1,9 +1,9 @@
 <?php
 /**
  * @package       View logs
- * @version       2.2.0.1
+ * @version       2.3.0
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
- * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
+ * @copyright     Copyright (c) 2019 - 2026 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
  * @since         1.0.0
  */
@@ -27,6 +27,7 @@ $wa->registerAndUseStyle('com_vlogs.style', 'com_vlogs/style.css')
 
         $filename = basename($full_filename);
         $is_large_file = (1048576 < $file_data['size']);
+        $jlog = $file_data['jlog'] ? 1 : 0;
         ?>
         <div class="row border border-1 p-3 mx-0 position-relative log-item">
             <div class="col-12 col-sm-6 col-md-5 col-lg-3 position-relative">
@@ -47,7 +48,7 @@ $wa->registerAndUseStyle('com_vlogs.style', 'com_vlogs/style.css')
                         ];
                         ?>
                         <a href="index.php?option=com_vlogs&view=item&tmpl=component&filename=<?php
-                        echo $filename; ?>"
+                        echo $filename; ?>&jlog=<?php echo $jlog ?>"
                            class="stretched-link h3 mb-lg-0 text-wrap"
                            data-joomla-dialog='<?php
                            echo json_encode($dialog); ?>'
@@ -112,23 +113,27 @@ $wa->registerAndUseStyle('com_vlogs.style', 'com_vlogs/style.css')
                 <div class="d-flex">
                     <button type="button" class="btn btn-sm btn-info me-1" data-task="item.download"
                             data-download-type="csv" data-log-filename="<?php
-                    echo $filename; ?>"><i class="icon icon-download"></i> CSV
+                    echo $filename; ?>" data-jlog="<?php
+                    echo $jlog; ?>"><i class="icon icon-download"></i> CSV
                     </button>
                     <button type="button" class="btn btn-sm btn-info me-1" data-task="item.download"
                             data-download-type="csvbom" data-log-filename="<?php
-                    echo $filename; ?>"><i class="icon icon-download"></i> <span
+                            echo $filename; ?>" data-jlog="<?php
+                            echo $jlog; ?>"><i class="icon icon-download"></i> <span
                                 class="text-nowrap">CSV <sup>Exel</sup></span></button>
                     <button type="button" class="btn btn-sm btn-info me-1" data-task="item.archive"
                             data-log-filename="<?php
-                            echo $filename; ?>"><i class="fa-regular fa-file-zipper"></i> ZIP
+                            echo $filename; ?>" data-jlog="<?php
+                            echo $jlog; ?>"<?php if ($jlog === 0) { ?> disabled<?php } ?>><i class="fa-regular fa-file-zipper"></i> ZIP
                     </button>
                     <a href="index.php?option=com_vlogs&view=item&filename=<?php
-                    echo $filename; ?>" class="btn btn-sm btn-primary me-1" target="_blank" title="<?php
-                    echo Text::_('JGLOBAL_OPENS_IN_A_NEW_WINDOW'); ?>"><span class="visually-hidden"><?php
+                            echo $filename; ?>&jlog=<?php echo $jlog ?>" class="btn btn-sm btn-primary me-1" target="_blank" title="<?php
+                            echo Text::_('JGLOBAL_OPENS_IN_A_NEW_WINDOW'); ?>"><span class="visually-hidden"><?php
                             echo Text::_('JGLOBAL_OPENS_IN_A_NEW_WINDOW'); ?></span></a>
                     <button type="button" class="btn btn-sm btn-danger me-1" data-task="item.delete"
                             data-log-filename="<?php
-                            echo $filename; ?>"><i class="icon icon-trash"></i></button>
+                            echo $filename; ?>" data-jlog="<?php
+                            echo $jlog; ?>"<?php if ($jlog === 0) { ?> disabled <?php } ?>><i class="icon icon-trash"></i></button>
                 </div>
             </div>
         </div>

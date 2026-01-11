@@ -1,8 +1,8 @@
 /**
  * @package       View logs
- * @version       2.2.0.1
+ * @version       2.3.0
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
- * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
+ * @copyright     Copyright (c) 2019 - 2026 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
  * @since         1.0.0
  */
@@ -26,10 +26,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         // Получаем данные из data-атрибутов
                         const task = this.dataset.task;
                         const filename = this.dataset.logFilename;
+                        const jlog = this.dataset.jlog;
                         const downloadType = this.dataset.downloadType;
 
                         // Формируем базовый URL
-                        let url = `index.php?option=com_vlogs&view=item&filename=${filename}&${token}=1&ajax=1`;
+                        let url = `index.php?option=com_vlogs&view=item&filename=${filename}&jlog=${jlog}&${token}=1&ajax=1`;
 
                         // Добавляем параметр download_type если есть
                         if (downloadType) {

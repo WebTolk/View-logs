@@ -1,15 +1,16 @@
 <?php
 /**
  * @package       View logs
- * @version       2.2.0.1
+ * @version       2.3.0
  * @Author        Sergey Tolkachyov, https://web-tolk.ru
- * @copyright     Copyright (c) 2019 - 2025 Sergey Tolkachyov. All rights reserved.
+ * @copyright     Copyright (c) 2019 - 2026 Sergey Tolkachyov. All rights reserved.
  * @license       GNU/GPL3 http://www.gnu.org/licenses/gpl-3.0.html
  * @since         1.0.0
  */
 
 namespace Joomla\Component\Vlogs\Administrator\Model;
 
+use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
 use Joomla\CMS\MVC\Factory\MVCFactoryInterface;
 use Joomla\CMS\MVC\Model\ListModel;
@@ -31,15 +32,20 @@ class ItemsModel extends ListModel
 	{
 		$files = Folder::files($this->log_path,'.php',true,true);
 
-
-
-		$phpErrorLog = ini_get('error_log');
-		if ($phpErrorLog && file_exists($phpErrorLog)) {
-			$files[] = $phpErrorLog;
-		}
 		$items = [];
 		foreach ($files as $file) {
 			$items[$file] = $this->getFileMetadata($file);
+			$items[$file]['jlog'] = true;
+		}
+
+		$phpErrorLogShow = (int) ComponentHelper::getParams('com_vlogs')->get('showphplog', 1);
+
+		if ($phpErrorLogShow) {
+			$phpErrorLog = ini_get('error_log');
+			if ($phpErrorLog && file_exists($phpErrorLog)) {
+				$items[$phpErrorLog] = $this->getFileMetadata($phpErrorLog);
+				$items[$phpErrorLog]['jlog'] = false;
+			}
 		}
 
 		return $items;
